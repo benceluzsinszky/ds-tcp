@@ -1,59 +1,68 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"net"
 	"time"
-	"encoding/binary"
 )
 
-func handleConnection(conn net.Conn) {
-	defer conn.Close() // Ensure the connection is closed when the function returns
+type Message struct {
+	seq int
+	ack int
+}
 
-	fmt.Println("Handling connection from:", conn.RemoteAddr())
+// sendMessage sends a Message struct over a TCP connection
+func sendMessage(conn net.Conn, message Message) error {
+	_, err := fmt.Fprintf(conn, "%d %d\n", message.seq, message.ack)
+	return err
+}
 
+// receiveMessage returns a Message struct from a TCP connection
+func receiveMessage(conn net.Conn) (Message, error) {
+	var message Message
+	_, err := fmt.Fscanf(conn, "%d %d\n", &message.seq, &message.ack)
+	return message, err
 }
 
 func client() {
 	conn, err := net.Dial("tcp", "localhost:8081")
-
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	defer conn.Close() // Ensure the connection is closed when done
 
-
-	// Send a message to the server
-	message := 100
-	//fmt.Fprintf(conn, message)
-	sendBytes(conn, message)
-
-
-	//fmt.Println("Message sent to server:", message)
-
-	response, err := bufio.NewReader(conn).ReadString('\n')
+	seq := 100
+	message := Message{seq: seq, ack: 0}
+	err = sendMessage(conn, message)
 	if err != nil {
-		fmt.Println("Error reading from server:", err)
+		fmt.Println("Error sending message: ", err)
 		return
 	}
-	fmt.Printf("Received response from server: %s", response)
-	//message1, err := bufio.NewReader(conn).ReadString('\n')
+	fmt.Println("Client sends SYN")
 
-	//fmt.Printf("Received message from server: %s", message1)
-		//response := "Message received!\n"
-		//_, err = conn.Write([]byte(response))
-
+	message, err = receiveMessage(conn)
+	if err != nil {
+		fmt.Println("Error receiving message: ", err)
+		return
+	}
+	if message.ack == seq+1 {
+		fmt.Println("Client receives SYN and ACK")
+		ack := message.seq + 1
+		seq = seq + 1
+		message = Message{seq: seq, ack: ack}
+		fmt.Println("Client sends ACK")
+		err = sendMessage(conn, message)
+		if err != nil {
+			fmt.Println("Error sending message: ", err)
+			return
+		}
+	}
 }
-
 
 func server() {
 	// Server
 	ln, err := net.Listen("tcp", ":8081")
-
-
-
 
 	if err != nil {
 		// handle error
@@ -61,57 +70,45 @@ func server() {
 		return
 	}
 
-	
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		message := receiveBytes(conn)// Read data into the buffer
-		//message, err := bufio.NewReader(conn).ReadString('\n')
-		
-		
-		fmt.Printf("Received message from client: %d", message)
-		response := "300\n"
-		_, err = conn.Write([]byte(response))
-
-		//message1 := "Hello, Client!\n"
-		//fmt.Fprintf(conn, message1)
-		//fmt.Println("Message sent to client:", message1)
 		defer conn.Close() // Ensure the connection is closed when done
 
-		go handleConnection(conn)
+		seq := 300
+
+		message, err := receiveMessage(conn)
+		if err != nil {
+			fmt.Println("Error receiving message: ", err)
+			return
+		}
+
+		client_seq := message.seq
+		if message.ack == 0 {
+			fmt.Println("Server receives client's SYN")
+			ack := message.seq + 1
+			message = Message{seq: seq, ack: ack}
+			fmt.Println("Server sends SYN and ACK")
+			err = sendMessage(conn, message)
+			if err != nil {
+				fmt.Println("Error sending message: ", err)
+				return
+			}
+		}
+
+		message, err = receiveMessage(conn)
+		if message.ack == seq+1 && message.seq == client_seq+1 {
+			fmt.Println("Server receives ACK")
+			fmt.Println("Handshake complete")
+		}
 	}
-
-
-
-}
-
-func sendBytes(conn net.Conn, message int){
-	buf := make([]byte, 4)             // Create a buffer to hold the integer
-	binary.BigEndian.PutUint32(buf, uint32(message)) // Convert integer to byte slice
-	conn.Write(buf) 
-
-
-}
-
-func receiveBytes(conn net.Conn)uint32{
-	responseBuf := make([]byte, 4)
-	_, err := conn.Read(responseBuf)
-	if err != nil {
-		fmt.Println("Error reading from server:", err)
-		return 0
-	}
-	response := binary.BigEndian.Uint32(responseBuf) // Convert byte slice to integer
-	return response
 }
 
 func main() {
-
 	go server()
-
 	client()
-
 	time.Sleep(30 * time.Second)
 }
