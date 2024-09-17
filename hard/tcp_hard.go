@@ -57,6 +57,9 @@ func client() {
 			fmt.Println("Error sending message: ", err)
 			return
 		}
+	} else {
+		fmt.Println("Invalid ACK")
+		return
 	}
 }
 
@@ -65,7 +68,6 @@ func server() {
 	ln, err := net.Listen("tcp", ":8081")
 
 	if err != nil {
-		// handle error
 		fmt.Println(err)
 		return
 	}
@@ -103,6 +105,9 @@ func server() {
 		if message.ack == seq+1 && message.seq == client_seq+1 {
 			fmt.Println("Server receives ACK")
 			fmt.Println("Handshake complete")
+		} else {
+			fmt.Println("Invalid ACK")
+			return
 		}
 	}
 }
