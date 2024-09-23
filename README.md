@@ -9,6 +9,8 @@ The channels were used (chan int) as the data structure to transmit both data (s
 - The syn channel is used to transmit the SYN (synchronize) and sequence numbers.
 - The ack channel is used to transmit ACKs (acknowledgment numbers).
 
+In the hard implementation, we are making use of the net package's .Listen() and .Dial() functions to simulate client-server communication. These methods create real TCP connections over the network, allowing the client and server to exchange messages as if they were running on separate machines. The sendMessage and receiveMessage functions handle the transmission of sequence and acknowledgment numbers between the client and server. The server listens on a specific port (8081), while the client connects to this port. The three-way handshake (SYN, SYN-ACK, ACK) is performed through real TCP socket communication, simulating a more realistic TCP handshake process.
+
 b) Does your implementation use threads or processes? Why is it not realistic to use threads?
 
 Our implementation uses go client(syn, ack) and go server(syn, ack), that is creating two concurrent goroutines.
@@ -16,6 +18,12 @@ Our implementation uses go client(syn, ack) and go server(syn, ack), that is cre
 These goroutines simulate the client and server, but they are not separate OS processes or threads. They are lightweight, managed by Go’s runtime.
 So it is not realistic to use neither the threads nor the proccesses as they are hardwer dependent, wherease a goroutines are managed by Go runtime.
 If we were to run our codebase on distinct servers, we would use the processes that will be triggered once a port has been accessed.
+
+Suggestion:
+
+We have created a client and a server using Go routines to simulate a TCP connection. In this basic implementation, we are establishing communication between the client and server using the 3-way handshake protocol. By using channels to exchange SYN and ACK values between the client and server, we simulate how these values would be transmitted in a real TCP connection. Once the acknowledgment values are validated on both sides, the program prints "Connection established," indicating the successful completion of the handshake. These goroutines simulate the client and server, but they are not separate OS processes or threads. They are lightweight, managed by Go’s runtime.
+
+Using threads (or Go routines in this case) to simulate a TCP connection is not realistic because the TCP protocol is designed to operate across a network. In a real TCP connection, the client and server would exchange SYN and ACK packets over the network using IP addresses and ports, with network delays, packet loss, and other factors influencing the communication.
 
 c) In case the network changes the order in which messages are delivered, how would you handle message re-ordering?
 
