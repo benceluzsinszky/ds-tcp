@@ -27,6 +27,8 @@ Using threads (or Go routines in this case) to simulate a TCP connection is not 
 
 c) In case the network changes the order in which messages are delivered, how would you handle message re-ordering?
 
+Selective Acknowledgments (SACK) is a valuable improvement for handling lost segments in TCP. Unlike standard acknowledgments that only indicate the last successfully received packet, SACK allows the receiver to inform the sender about all received segments, even if some are missing. This means the sender can focus on retransmitting only the lost packets rather than resending all subsequent ones. As a result, SACK enhances network efficiency and improves throughput, particularly in environments with higher packet loss.
+
 d) In case messages can be delayed or lost, how does your implementation handle message loss?
 If messages are delayed, we would need to implement a timeout mechanism. In the real world, a timeout ensures that the sender waits for an acknowledgment (ACK) for a certain period. If the ACK is not received within the specified timeout window, the sender assumes that the packet or the acknowledgment was lost.
 In our Go implementation, this would mean introducing a timer. If a message (such as a SYN, SYN-ACK, or ACK) is not received within the timeout period, the sender could retransmit the message, assuming it was lost or delayed beyond the acceptable window.
